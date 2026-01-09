@@ -24,7 +24,9 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DraggableDateRangePicker(
                         modifier = Modifier.padding(innerPadding),
-                        state = rememberDraggableDateRangePickerState()
+                        state = rememberDraggableDateRangePickerState(),
+                        startYear = 2026,
+                        endYear = 2026
                     )
                 }
             }
