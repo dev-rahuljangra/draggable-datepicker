@@ -19,6 +19,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        mavenLocal()
     }
 }
 
@@ -26,4 +27,4 @@ rootProject.name = "DatePicker"
 include(":app")
 
 
-include(":draggableDatePicker")
+include(":draggable-datepicker")

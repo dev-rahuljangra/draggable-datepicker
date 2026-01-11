@@ -42,7 +42,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":draggableDatePicker"))
+   // implementation(project(":draggableDatePicker"))
+    implementation("com.github.dev-rahuljangra:draggable-datepicker:1.0.0-LOCAL")
     // 2. Add the desugaring dependency here as well
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(libs.androidx.core.ktx)
