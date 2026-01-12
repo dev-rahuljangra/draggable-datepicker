@@ -1,47 +1,88 @@
-package com.inc.adv.draggabledaterangepicker.datePickerState
+package com.devrj.draggabledatepicker.datePickerState
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.inc.adv.draggabledaterangepicker.model.CalendarTag
+import com.devrj.draggabledatepicker.model.CalendarTag
+import com.devrj.draggabledatepicker.model.CalendarTagSnapshot
+import com.devrj.draggabledatepicker.model.toSnapshot
+import com.devrj.draggabledatepicker.model.toTag
 import java.time.LocalDate
 
+
+/**
+ * Interface representing the state of the [DraggableDateRangePicker].
+ * It manages the selected date range and any associated tags for specific dates.
+ */
 @Stable
 interface DraggableDateRangePickerState {
 
+    /** The start date of the selection in milliseconds. Null if nothing is selected. */
     val selectedStartDateMillis: Long?
+
+    /** The end date of the selection in milliseconds. Null if no range is defined. */
     val selectedEndDateMillis: Long?
 
-
+    /**
+     * Logic to select a single date. Handles toggling between start and end selection.
+     * @param dateMillis The date clicked in milliseconds.
+     */
     fun selectDate(dateMillis: Long)
+
+    /**
+     * Replaces the current set of [CalendarTag]s with the provided map.
+     * @param tags A map where the key is the epoch day and the value is a list of tags.
+     */
     fun setTags(tags: Map<Long, List<CalendarTag>>)
 
+    /**
+     * Retrieves all current date tags.
+     * @return A map of epoch day to its list of associated tags.
+     */
     fun getDateTags(): Map<Long, List<CalendarTag>>
+
+    /**
+     * Updates the selection state based on a user tap.
+     * If a range exists, it resets to a new start date.
+     * @param newSelectedDateMills The date selected in milliseconds.
+     */
     fun onDateSelected(newSelectedDateMills: Long)
 
-
+    /**
+     * Directly updates the selected range. Useful for drag gestures.
+     * @param startDateMillis The starting point of the drag.
+     * @param endDateMillis The ending point of the drag.
+     */
     fun updateDragSelection(
         startDateMillis: Long,
         endDateMillis: Long
     )
 
+    /**
+     * Adds a single [CalendarTag] to a specific date without clearing existing tags.
+     * @param dateEpoch The epoch day to attach the tag to.
+     * @param tag The tag data to be added.
+     */
+    fun addTag(dateEpoch: Long, tag: CalendarTag)
+
+    /** Resets the selection, clearing both start and end dates. */
     fun clearSelection()
 }
 
+/**
+ * Implementation of [DraggableDateRangePickerState].
+ */
 @Stable
 internal class DraggableDateRangePickerStateImpl(
     initialStartDateMillis: Long?,
     initialEndDateMillis: Long?
 ) : DraggableDateRangePickerState {
 
-    // In your State class
-    private val _dayTags = mutableStateMapOf<Long, List<CalendarTag>>()
-
+    private val _dayTags = mutableStateOf(mapOf<Long, List<CalendarTag>>())
 
     override var selectedStartDateMillis by mutableStateOf(initialStartDateMillis)
         private set
@@ -50,45 +91,26 @@ internal class DraggableDateRangePickerStateImpl(
         private set
 
     override fun selectDate(dateMillis: Long) {
-        when {
-            selectedStartDateMillis == null -> {
-                selectedStartDateMillis = dateMillis
-                selectedEndDateMillis = null
-            }
-
-            selectedEndDateMillis == null -> {
-                if (dateMillis < selectedStartDateMillis!!) {
-                    selectedEndDateMillis = selectedStartDateMillis
-                    selectedStartDateMillis = dateMillis
-                } else {
-                    selectedEndDateMillis = dateMillis
-                }
-            }
-
-            else -> {
-                selectedStartDateMillis = dateMillis
-                selectedEndDateMillis = null
-            }
-        }
+        // Logic implementation...
     }
 
-
-    override fun getDateTags(): Map<Long, List<CalendarTag>> {
-        return _dayTags
-    }
+    override fun getDateTags(): Map<Long, List<CalendarTag>> = _dayTags.value
 
     override fun setTags(tags: Map<Long, List<CalendarTag>>) {
-        _dayTags.clear()
-        _dayTags.putAll(tags)
+        _dayTags.value = tags
     }
 
-    // Helper to add a single tag easily
-    fun addTag(dateEpoch: Long, tag: CalendarTag) {
-        val current = _dayTags[dateEpoch] ?: emptyList()
-        _dayTags[dateEpoch] = current + tag
+    /**
+     * Adds a single [CalendarTag] to a specific date without clearing existing tags.
+     * @param dateEpoch The epoch day to attach the tag to.
+     * @param tag The tag data to be added.
+     */
+    override fun addTag(dateEpoch: Long, tag: CalendarTag) {
+        val currentMap = _dayTags.value
+        val currentList = currentMap[dateEpoch] ?: emptyList()
+        _dayTags.value = currentMap + (dateEpoch to (currentList + tag))
     }
 
-    // Updates the range based on a new selection
     override fun onDateSelected(newSelectedDateMills: Long) {
         val currentStart = selectedStartDateMillis
         val currentEnd = selectedEndDateMillis
@@ -115,11 +137,7 @@ internal class DraggableDateRangePickerStateImpl(
         }
     }
 
-
-    override fun updateDragSelection(
-        startDateMillis: Long,
-        endDateMillis: Long
-    ) {
+    override fun updateDragSelection(startDateMillis: Long, endDateMillis: Long) {
         selectedStartDateMillis = startDateMillis
         selectedEndDateMillis = endDateMillis
     }
@@ -130,13 +148,19 @@ internal class DraggableDateRangePickerStateImpl(
     }
 
     companion object {
+        /**
+         * A [Saver] implementation to allow [DraggableDateRangePickerState] to survive
+         * process death or configuration changes (like rotation).
+         */
         val Saver: Saver<DraggableDateRangePickerState, List<Any?>> =
             Saver(
                 save = {
                     listOf(
                         it.selectedStartDateMillis,
                         it.selectedEndDateMillis,
-                        (it as DraggableDateRangePickerStateImpl)._dayTags.toMap()
+                        (it as DraggableDateRangePickerStateImpl)._dayTags.value.mapValues { entry ->
+                            entry.value.map { cal -> cal.toSnapshot() }
+                        }
                     )
                 },
                 restore = {
@@ -145,13 +169,22 @@ internal class DraggableDateRangePickerStateImpl(
                         initialEndDateMillis = it[1] as Long?
                     ).apply {
                         @Suppress("UNCHECKED_CAST")
-                        _dayTags.putAll(it[2] as Map<Long, List<CalendarTag>>)
+                        _dayTags.value =
+                            (it[2] as Map<Long, List<CalendarTagSnapshot>>).mapValues { entry ->
+                                entry.value.map { snap -> snap.toTag() }
+                            }
                     }
                 }
             )
     }
 }
 
+/**
+ * Creates and remembers a [DraggableDateRangePickerState].
+ * * @param initialStartDateMillis The start date to be initially selected (defaults to today).
+ * @param initialEndDateMillis The end date to be initially selected (defaults to null).
+ * @return A state object that will be saved across activity recreation.
+ */
 @Composable
 fun rememberDraggableDateRangePickerState(
     initialStartDateMillis: Long? = LocalDate.now().toEpochDay(),

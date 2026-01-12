@@ -1,14 +1,14 @@
 package com.inc.adv.draggabledaterangepicker.utils
 
 import androidx.compose.ui.unit.dp
-import com.inc.adv.draggabledaterangepicker.enums.Days
-import com.inc.adv.draggabledaterangepicker.enums.Days.FRIDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.MONDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.SATURDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.SUNDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.THURSDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.TUESDAY
-import com.inc.adv.draggabledaterangepicker.enums.Days.WEDNESDAY
+import com.devrj.draggabledatepicker.enums.Days
+import com.devrj.draggabledatepicker.enums.Days.FRIDAY
+import com.devrj.draggabledatepicker.enums.Days.MONDAY
+import com.devrj.draggabledatepicker.enums.Days.SATURDAY
+import com.devrj.draggabledatepicker.enums.Days.SUNDAY
+import com.devrj.draggabledatepicker.enums.Days.THURSDAY
+import com.devrj.draggabledatepicker.enums.Days.TUESDAY
+import com.devrj.draggabledatepicker.enums.Days.WEDNESDAY
 
 import java.util.Calendar
 

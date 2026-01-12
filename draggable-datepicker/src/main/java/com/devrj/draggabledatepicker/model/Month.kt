@@ -1,6 +1,6 @@
-package com.inc.adv.draggabledaterangepicker.model
+package com.devrj.draggabledatepicker.model
 
-import com.inc.adv.draggabledaterangepicker.enums.Days
+import com.devrj.draggabledatepicker.enums.Days
 
 internal data class Month(
     val name: String,

@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.ui
+package com.devrj.draggabledatepicker.ui
 
 import android.util.Log
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -30,14 +30,14 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.inc.adv.draggabledaterangepicker.datePickerState.DraggableDateRangePickerState
-import com.inc.adv.draggabledaterangepicker.enums.TagAlignment
-import com.inc.adv.draggabledaterangepicker.model.CalendarColors
-import com.inc.adv.draggabledaterangepicker.model.CalendarTag
-import com.inc.adv.draggabledaterangepicker.model.CalendarTextStyles
-import com.inc.adv.draggabledaterangepicker.model.DayTextCache
-import com.inc.adv.draggabledaterangepicker.model.MeasuredTag
-import com.inc.adv.draggabledaterangepicker.model.MonthMetadata
+import com.devrj.draggabledatepicker.datePickerState.DraggableDateRangePickerState
+import com.devrj.draggabledatepicker.enums.TagAlignment
+import com.devrj.draggabledatepicker.model.CalendarColors
+import com.devrj.draggabledatepicker.model.CalendarTag
+import com.devrj.draggabledatepicker.model.CalendarTextStyles
+import com.devrj.draggabledatepicker.model.DayTextCache
+import com.devrj.draggabledatepicker.model.MeasuredTag
+import com.devrj.draggabledatepicker.model.MonthMetadata
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth

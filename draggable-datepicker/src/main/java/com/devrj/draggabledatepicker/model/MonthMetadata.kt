@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.model
+package com.devrj.draggabledatepicker.model
 
 import androidx.compose.runtime.Immutable
 import java.time.YearMonth

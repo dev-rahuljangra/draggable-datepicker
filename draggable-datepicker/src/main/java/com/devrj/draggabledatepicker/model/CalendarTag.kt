@@ -1,10 +1,10 @@
-package com.inc.adv.draggabledaterangepicker.model
+package com.devrj.draggabledatepicker.model
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import com.inc.adv.draggabledaterangepicker.enums.TagAlignment
-import com.inc.adv.draggabledaterangepicker.enums.TagType
+import com.devrj.draggabledatepicker.enums.TagAlignment
+import com.devrj.draggabledatepicker.enums.TagType
 
 data class CalendarTag(
     val text: String,

@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.enums
+package com.devrj.draggabledatepicker.enums
 
 enum class TagAlignment {
     TOP_START, TOP_CENTER, TOP_END,

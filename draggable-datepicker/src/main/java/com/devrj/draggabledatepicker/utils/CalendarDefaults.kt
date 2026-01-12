@@ -5,12 +5,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.inc.adv.draggabledaterangepicker.model.CalendarColors
-import com.inc.adv.draggabledaterangepicker.model.CalendarTextStyles
-import com.inc.adv.draggabledaterangepicker.ui.theme.selectedDateBackgroundColor
-import com.inc.adv.draggabledaterangepicker.ui.theme.selectedRangeBackgroundColor
-import com.inc.adv.draggabledaterangepicker.ui.theme.tagColor
-import com.inc.adv.draggabledaterangepicker.ui.theme.weekendBackgroundColor
+import com.devrj.draggabledatepicker.model.CalendarColors
+import com.devrj.draggabledatepicker.model.CalendarTextStyles
+import com.devrj.draggabledatepicker.ui.theme.selectedDateBackgroundColor
+import com.devrj.draggabledatepicker.ui.theme.selectedRangeBackgroundColor
+import com.devrj.draggabledatepicker.ui.theme.tagColor
+import com.devrj.draggabledatepicker.ui.theme.weekendBackgroundColor
 
 object CalendarDefaults {
     @Composable

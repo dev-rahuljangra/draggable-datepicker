@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.enums
+package com.devrj.draggabledatepicker.enums
 
 internal enum class Days(val abbreviation: String, val value: String, val number: Int) {
     MONDAY("MON", "Monday", 1),

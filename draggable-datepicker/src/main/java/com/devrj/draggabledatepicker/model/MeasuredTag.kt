@@ -1,9 +1,9 @@
-package com.inc.adv.draggabledaterangepicker.model
+package com.devrj.draggabledatepicker.model
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextLayoutResult
-import com.inc.adv.draggabledaterangepicker.enums.TagAlignment
+import com.devrj.draggabledatepicker.enums.TagAlignment
 
 @Immutable
 internal data class MeasuredTag(

@@ -13,9 +13,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.devrj.datepicker.ui.theme.DatePickerTheme
+import com.devrj.draggabledatepicker.datePickerState.rememberDraggableDateRangePickerState
+import com.devrj.draggabledatepicker.model.CalendarTag
 import com.devrj.draggabledatepicker.ui.DraggableDateRangePicker
-import com.inc.adv.draggabledaterangepicker.datePickerState.rememberDraggableDateRangePickerState
-import com.inc.adv.draggabledaterangepicker.model.CalendarTag
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 

@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.model
+package com.devrj.draggabledatepicker.model
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Immutable

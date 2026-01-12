@@ -18,10 +18,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.inc.adv.draggabledaterangepicker.datePickerState.DraggableDateRangePickerState
-import com.inc.adv.draggabledaterangepicker.model.CalendarColors
-import com.inc.adv.draggabledaterangepicker.model.CalendarTextStyles
-import com.inc.adv.draggabledaterangepicker.ui.MonthContainer
+import com.devrj.draggabledatepicker.datePickerState.DraggableDateRangePickerState
+import com.devrj.draggabledatepicker.model.CalendarColors
+import com.devrj.draggabledatepicker.model.CalendarTextStyles
 import com.inc.adv.draggabledaterangepicker.utils.CalendarDefaults
 import com.inc.adv.draggabledaterangepicker.utils.Constant
 import java.time.DayOfWeek

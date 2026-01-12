@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.ui.theme
+package com.devrj.draggabledatepicker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
