@@ -150,7 +150,7 @@ internal class DraggableDateRangePickerStateImpl(
     companion object {
         /**
          * A [Saver] implementation to allow [DraggableDateRangePickerState] to survive
-         * process death or configuration changes (like rotation).
+         * process death or configuration changes.
          */
         val Saver: Saver<DraggableDateRangePickerState, List<Any?>> =
             Saver(
@@ -158,21 +158,27 @@ internal class DraggableDateRangePickerStateImpl(
                     listOf(
                         it.selectedStartDateMillis,
                         it.selectedEndDateMillis,
+                        // Convert tags to snapshots for saving
                         (it as DraggableDateRangePickerStateImpl)._dayTags.value.mapValues { entry ->
                             entry.value.map { cal -> cal.toSnapshot() }
                         }
                     )
                 },
-                restore = {
+                restore = { savedList ->
+                    // SAFETY: Check if the list exists and has the expected size
+                    if (savedList.isEmpty()) return@Saver null
+
                     DraggableDateRangePickerStateImpl(
-                        initialStartDateMillis = it[0] as Long?,
-                        initialEndDateMillis = it[1] as Long?
+                        initialStartDateMillis = savedList[0] as? Long,
+                        initialEndDateMillis = savedList[1] as? Long
                     ).apply {
-                        @Suppress("UNCHECKED_CAST")
-                        _dayTags.value =
-                            (it[2] as Map<Long, List<CalendarTagSnapshot>>).mapValues { entry ->
+                        // SAFETY: Use safe casting (as?) to prevent "Source must not be null"
+                        val savedMap = savedList[2] as? Map<Long, List<CalendarTagSnapshot>>
+                        if (savedMap != null) {
+                            _dayTags.value = savedMap.mapValues { entry ->
                                 entry.value.map { snap -> snap.toTag() }
                             }
+                        }
                     }
                 }
             )
