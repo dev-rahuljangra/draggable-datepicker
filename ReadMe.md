@@ -56,6 +56,12 @@ dependencyResolutionManagement {
 Add the library to your app-level `build.gradle.kts`:
 
 ```kotlin
+compileOptions {
+        // This allows DayOfWeek to work on API 21
+        isCoreLibraryDesugaringEnabled = true
+        //....
+    }
+
 dependencies {
     implementation("com.github.dev-rahuljangra:draggable-datepicker:<latest-version>")
     //This is for Java LocalDate.now() support in min Sdk 21
