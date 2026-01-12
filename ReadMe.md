@@ -129,19 +129,28 @@ fun MyDateSelectionScreen() {
 
 - Custom calendar-based workflows
 
+## ✍️ Author
+
+**Rahul Jangra** Passionate Android Developer focused on creating beautiful and functional UI components.
+
+- GitHub: [@dev-rahuljangra](https://github.com/dev-rahuljangra)
+- LinkedIn: [Rahul Jangra](https://www.linkedin.com/in/dev-rahul-jangra3310/)
+
 ## 🤝 Contributing
 
-- Contributions are welcome and appreciated 🙌
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-- Fork the repository
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- Create a new feature branch
+---
 
-- Commit your changes
+## ⭐ Support the Project
 
-- Open a pull request
-
-For major changes, please open an issue first to discuss.
+If you find this library helpful, please consider giving it a **Star** on GitHub. It helps other developers find the project and keeps me motivated to add more features!
 
 ## 📄 License
 
