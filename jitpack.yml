@@ -1,5 +1,9 @@
 jdk:
   - openjdk17
 
+# This ensures JitPack only runs the publish task for the library
+install:
+  - ./gradlew :draggable-datepicker:publishToMavenLocal -x test -x lint
+
 before_install:
   - chmod +x gradlew

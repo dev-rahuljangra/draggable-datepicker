@@ -54,7 +54,7 @@ afterEvaluate {
                 // The coordinates you will use to implement the library
                 groupId = "com.github.dev-rahuljangra"
                 artifactId = "draggable-datepicker"
-                version = "1.0.0"
+                version = "1.0.1"
 
                 // Point to the release component created in the android block
                 from(components["release"])
