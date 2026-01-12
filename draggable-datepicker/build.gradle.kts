@@ -45,20 +45,8 @@ android {
         }
     }
 }
-/*publishing {
-    publications {
-        create<MavenPublication>("release") {
-            groupId = "com.github.dev-rahuljangra"
-            artifactId = "draggable-datepicker"
-            version = "1.0.1"
 
-            afterEvaluate {
-                from(components["release"])
-            }
-        }
-    }
-}*/
-// 3. Configure the Maven Publication
+//Configure the Maven Publication
 afterEvaluate {
     publishing {
         publications {
@@ -66,7 +54,7 @@ afterEvaluate {
                 // The coordinates you will use to implement the library
                 groupId = "com.github.dev-rahuljangra"
                 artifactId = "draggable-datepicker"
-                version = "1.0.0-LOCAL" // Use a "-LOCAL" suffix to avoid confusion
+                version = "1.0.0"
 
                 // Point to the release component created in the android block
                 from(components["release"])
