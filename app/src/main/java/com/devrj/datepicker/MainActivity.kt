@@ -9,22 +9,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.devrj.datepicker.ui.theme.DatePickerTheme
 import com.devrj.draggabledatepicker.ui.DraggableDateRangePicker
 import com.inc.adv.draggabledaterangepicker.datePickerState.rememberDraggableDateRangePickerState
+import com.inc.adv.draggabledaterangepicker.model.CalendarTag
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val state = rememberDraggableDateRangePickerState()
+            LaunchedEffect(Unit) {
+                delay(3000)
+                state.setTags(
+                    mapOf(
+                        LocalDate.of(2026,1,1).toEpochDay() to listOf(CalendarTag(text = "New Year"))
+                    )
+                )
+            }
             DatePickerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DraggableDateRangePicker(
                         modifier = Modifier.padding(innerPadding),
-                        state = rememberDraggableDateRangePickerState(),
+                        state = state,
                         startYear = 2026,
                         endYear = 2026
                     )

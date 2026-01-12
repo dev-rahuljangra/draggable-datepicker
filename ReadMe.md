@@ -28,12 +28,12 @@ Built with performance, flexibility, and Compose best practices in mind.
   Designed for use cases like flights, hotels, and event scheduling.
 
 ---
+
 ## 📸 Preview
 
 <p align="center">
   <img src="assets/preview.gif" width="420" alt="Draggable DatePicker Preview"/>
 </p>
-
 
 ## 📦 Installation
 
@@ -63,17 +63,33 @@ dependencies {
 
 🔗 **Latest version:** [GitHub Repository](https://github.com/dev-rahuljangra/draggable-datepicker)
 
-
 ## 🛠️ Usage
 
 Using the `DraggableDateRangePicker` in your Compose code is simple.
 Just remember to use `rememberDraggableDateRangePickerState()` to manage the selection.
 
+- Adding Tags to Dates
+
+You can attach one or more **tags** to specific dates (for example: holidays, prices, events, or
+offers).
+
+Tags are applied via the picker state using the `setTags()` API [fun setTags(tags: Map<Long, List<CalendarTag>>)].
+
+
 ```kotlin
 @Composable
 fun MyDateSelectionScreen() {
     val state = rememberDraggableDateRangePickerState()
-
+      LaunchedEffect(Unit) {
+        delay(3000)
+    
+        state.setTags(
+          mapOf(
+            LocalDate.of(2026, 1, 1).toEpochDay() to
+                    listOf(CalendarTag(text = "New Year"))
+          )
+        )
+      }
     DraggableDateRangePicker(
         state = state,
         startYear = 2026,
