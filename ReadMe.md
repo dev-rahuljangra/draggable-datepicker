@@ -73,7 +73,7 @@ Just remember to use `rememberDraggableDateRangePickerState()` to manage the sel
 You can attach one or more **tags** to specific dates (for example: holidays, prices, events, or
 offers).
 
-Tags are applied via the picker state using the `setTags()` API [fun setTags(tags: Map<Long, List<CalendarTag>>)].
+Tags are applied via the picker state using the `setTags()` API.
 
 
 ```kotlin
