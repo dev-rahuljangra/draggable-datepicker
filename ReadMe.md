@@ -59,6 +59,8 @@ Add the library to your app-level `build.gradle.kts`:
 dependencies {
     implementation("com.github.dev-rahuljangra:draggable-datepicker:<latest-version>")
 }
+//This is for Java LocalDate.now() support in min Sdk 21
+coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 ```
 
 🔗 **Latest version:** [GitHub Repository](https://github.com/dev-rahuljangra/draggable-datepicker)
