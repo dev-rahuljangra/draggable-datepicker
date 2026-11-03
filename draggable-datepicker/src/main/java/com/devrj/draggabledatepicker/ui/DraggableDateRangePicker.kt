@@ -22,7 +22,7 @@ import com.devrj.draggabledatepicker.datePickerState.DraggableDateRangePickerSta
 import com.devrj.draggabledatepicker.model.CalendarColors
 import com.devrj.draggabledatepicker.model.CalendarTextStyles
 import com.inc.adv.draggabledaterangepicker.utils.CalendarDefaults
-import com.inc.adv.draggabledaterangepicker.utils.Constant
+import com.devrj.draggabledatepicker.utils.Constant
 import java.time.DayOfWeek
 
 @OptIn(ExperimentalFoundationApi::class)

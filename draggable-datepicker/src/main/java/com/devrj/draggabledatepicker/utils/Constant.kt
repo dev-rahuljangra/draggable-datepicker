@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.utils
+package com.devrj.draggabledatepicker.utils
 
 import androidx.compose.ui.unit.dp
 import com.devrj.draggabledatepicker.enums.Days

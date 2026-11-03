@@ -32,9 +32,10 @@ android {
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
     }
@@ -42,8 +43,7 @@ android {
 }
 
 dependencies {
-//    implementation("com.github.dev-rahuljangra:draggable-datepicker:1.0.3")
-    implementation(project(":draggable-datepicker"))
+   implementation("com.github.dev-rahuljangra:draggable-datepicker:1.0.0-alpha01")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

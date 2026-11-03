@@ -165,14 +165,13 @@ internal class DraggableDateRangePickerStateImpl(
                     )
                 },
                 restore = { savedList ->
-                    // SAFETY: Check if the list exists and has the expected size
                     if (savedList.isEmpty()) return@Saver null
 
                     DraggableDateRangePickerStateImpl(
                         initialStartDateMillis = savedList[0] as? Long,
                         initialEndDateMillis = savedList[1] as? Long
                     ).apply {
-                        // SAFETY: Use safe casting (as?) to prevent "Source must not be null"
+
                         val savedMap = savedList[2] as? Map<Long, List<CalendarTagSnapshot>>
                         if (savedMap != null) {
                             _dayTags.value = savedMap.mapValues { entry ->
