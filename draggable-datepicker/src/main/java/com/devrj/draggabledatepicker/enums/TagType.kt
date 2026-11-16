@@ -1,5 +1,5 @@
 package com.devrj.draggabledatepicker.enums
 
 enum class TagType {
-    NONE,HOLIDAYS
+    NONE, HOLIDAYS, PRICE
 }

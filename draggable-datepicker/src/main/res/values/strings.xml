@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ddp_state_selected">Selected</string>
+    <string name="ddp_state_range_start">Start of selected range</string>
+    <string name="ddp_state_range_end">End of selected range</string>
+    <string name="ddp_state_range_middle">In selected range</string>
+    <string name="ddp_state_unavailable">Unavailable</string>
+    <string name="ddp_action_select">Select date</string>
+    <string name="ddp_preset_today">Today</string>
+    <string name="ddp_preset_next_7_days">Next 7 days</string>
+    <string name="ddp_preset_next_30_days">Next 30 days</string>
+    <string name="ddp_preset_rest_of_month">Rest of this month</string>
+    <string name="ddp_confirm">OK</string>
+    <string name="ddp_dismiss">Cancel</string>
+</resources>

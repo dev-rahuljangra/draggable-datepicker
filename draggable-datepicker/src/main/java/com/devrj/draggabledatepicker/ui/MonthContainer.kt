@@ -1,14 +1,11 @@
 package com.devrj.draggabledatepicker.ui
 
-import android.util.Log
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -19,514 +16,425 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.devrj.draggabledatepicker.R
 import com.devrj.draggabledatepicker.datePickerState.DraggableDateRangePickerState
+import com.devrj.draggabledatepicker.enums.DateSelectionMode
 import com.devrj.draggabledatepicker.enums.TagAlignment
+import com.devrj.draggabledatepicker.enums.TagStyle
+import com.devrj.draggabledatepicker.enums.TagType
 import com.devrj.draggabledatepicker.model.CalendarColors
 import com.devrj.draggabledatepicker.model.CalendarTag
 import com.devrj.draggabledatepicker.model.CalendarTextStyles
+import com.devrj.draggabledatepicker.model.DayCell
 import com.devrj.draggabledatepicker.model.DayTextCache
+import com.devrj.draggabledatepicker.model.DayTextVariant
 import com.devrj.draggabledatepicker.model.MeasuredTag
 import com.devrj.draggabledatepicker.model.MonthMetadata
+import com.devrj.draggabledatepicker.selection.DAYS_PER_WEEK
+import com.devrj.draggabledatepicker.selection.SelectionRules
+import com.devrj.draggabledatepicker.selection.SelectionValue
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalTextApi::class)
+private val TagPadding = 4.dp
+private val PillHorizontalPadding = 3.dp
+private val PillVerticalPadding = 1.dp
+private val HandleWidth = 2.dp
+private val HandleHeight = 12.dp
+private val HandleSpacing = 4.dp
+private val HandlePadding = 6.dp
+private val SelectedCornerRadius = 10.dp
+private val BorderWidth = 1.dp
+
+private enum class CellSelection { NONE, START, END, BOTH, MIDDLE }
+
+private fun selectionOf(state: DraggableDateRangePickerState, epoch: Long): CellSelection {
+    val start = state.selectedStartEpochDay
+    val end = state.selectedEndEpochDay
+    return when {
+        start == epoch && end == epoch -> CellSelection.BOTH
+        start == epoch -> CellSelection.START
+        end == epoch -> CellSelection.END
+        start != null && end != null && epoch > start && epoch < end -> CellSelection.MIDDLE
+        else -> CellSelection.NONE
+    }
+}
+
+/**
+ * One month's grid. The canvas draws the cells, so a drag only redraws instead of recomposing.
+ * Each day also has a lightweight child node that carries its accessibility information and the
+ * optional custom content.
+ */
 @Composable
 internal fun MonthContainer(
     state: DraggableDateRangePickerState,
-    year: Int,
-    monthIndex: Int,
+    month: MonthMetadata,
     cellSize: Dp,
-    tags: Map<Long, List<CalendarTag>>?,
-    modifier: Modifier = Modifier,
     colors: CalendarColors,
     calendarStyles: CalendarTextStyles,
+    textMeasurer: TextMeasurer,
+    dayTextCache: DayTextCache,
+    dayLabels: List<String>,
+    rules: SelectionRules,
     weekendDays: List<DayOfWeek>,
-    today: LocalDate = LocalDate.now()
+    today: LocalDate,
+    isRtl: Boolean,
+    dateFormatter: DateTimeFormatter,
+    registry: MonthGridRegistry,
+    dayContent: (@Composable (DayCell) -> Unit)?,
+    onDateTapped: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val textMeasurer = rememberTextMeasurer()
-    val density = LocalDensity.current
+    val enabledDays = remember(month, rules) {
+        BooleanArray(month.daysInMonth) { rules.isEnabled(month.firstDayEpoch + it) }
+    }
+    val weekendFlags = remember(month, weekendDays) {
+        val firstDay = month.yearMonth.atDay(1).dayOfWeek
+        BooleanArray(month.daysInMonth) { firstDay.plus(it.toLong()) in weekendDays }
+    }
+    val showHandles = rules.mode == DateSelectionMode.RANGE
+    val drawsDayContent = dayContent == null
 
-    // --- 1. PRE-CALCULATIONS (Outside Draw Loop) ---
-    val monthState = remember(year, monthIndex) {
-        val yearMonth = YearMonth.of(year, monthIndex + 1)
-        val daysInMonth = yearMonth.lengthOfMonth()
-        val firstDayOfMonth = yearMonth.atDay(1)
-        // Subtract 1 from the ISO value (Mon=1 becomes 0, Sun=7 becomes 6)
-        val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value - 1
-        val firstDayEpoch = firstDayOfMonth.toEpochDay()
-        val nowEpoch = today.toEpochDay()
-
-        MonthMetadata(
-            yearMonth = yearMonth,
-            daysInMonth = daysInMonth,
-            firstDayOfWeek = firstDayOfWeek,
-            firstDayEpoch = firstDayEpoch,
-            nowEpoch = nowEpoch,
-            totalCells = daysInMonth + firstDayOfWeek,
-            isPastMonth = yearMonth.atEndOfMonth().isBefore(today)
-        )
+    DisposableEffect(registry, month) {
+        onDispose { registry.remove(month) }
     }
 
-    // --- 2. TEXT CACHING ---
-    // Pre-measure day numbers (1..31) so we don't measure on every frame of a drag
-    val dayNumberLayouts = remember(
-        calendarStyles.dayTextStyle,
-        calendarStyles.weekendTextStyle,
-        calendarStyles.selectedDayTextStyle,
-        calendarStyles.disabledDayTextStyle
-    ) {
-        val standard = calendarStyles.dayTextStyle
-        val weekend = calendarStyles.weekendTextStyle
-        val selected = calendarStyles.selectedDayTextStyle
-        val disabled = calendarStyles.disabledDayTextStyle
-
-        (1..31).associateWith { day ->
-            // We cache 4 variants per day to avoid style resolution during draw
-            DayTextCache(
-                standard = textMeasurer.measure(AnnotatedString(day.toString()), standard),
-                weekend = textMeasurer.measure(AnnotatedString(day.toString()), weekend),
-                selected = textMeasurer.measure(AnnotatedString(day.toString()), selected),
-                disabled = textMeasurer.measure(AnnotatedString(day.toString()), disabled)
-            )
-        }
-    }
-
-    // Pre-measure tags if they exist.
-    // Note: If tags change frequently, this key needs to be robust.
-    val tagLayouts = remember(tags, density) {
-        tags?.mapValues { (_, tagList) ->
-            tagList.map { tag ->
-                val layout = textMeasurer.measure(
-                    text = AnnotatedString(tag.text),
-                    style = TextStyle(
-                        color = tag.color ?: colors.tagContentColor,
-                        fontSize = tag.fontSize,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                MeasuredTag(
-                    textLayoutResult = layout,
-                    alignment = tag.alignment,
-                    backgroundColor = tag.backgroundColor ?: colors.tagContainerColor,
-                    color = tag.color ?: colors.tagContentColor
-                )
-            }
-        }
-    }
-
-    // Layout Dimensions
-    val cellHeightPx = with(density) { cellSize.toPx() }
-    val numRows = (monthState.totalCells + 6) / 7
-    val canvasHeight = cellSize * numRows
-
-    // Drawing Constants (Converted to Px once)
-    val strokeWidthPx = with(density) { 1.dp.toPx() }
-    val barWidthPx = with(density) { 2.dp.toPx() }
-    val barHeightPx = with(density) { 12.dp.toPx() }
-    val barSpacingPx = with(density) { 4.dp.toPx() }
-    val barPaddingPx = with(density) { 6.dp.toPx() }
-    val cornerRadius = CornerRadius(10f, 10f)
-
-    Spacer(
+    Layout(
         modifier = modifier
-            .fillMaxWidth()
-            .height(canvasHeight)
+            .onPlaced { registry.update(month, it) }
             .drawWithCache {
-                val cellWidthPx = size.width / 7f
-                onDrawBehind {
-                    // --- 3. OPTIMIZED DRAW LOOP ---
-                    for (day in 1..monthState.daysInMonth) {
-                        val gridIndex = day + monthState.firstDayOfWeek - 1
-                        val row = gridIndex / 7
-                        val col = gridIndex % 7
-
-                        val x = col * cellWidthPx
-                        val y = row * cellHeightPx
-
-                        // Math-only date calculation (No Allocations)
-                        val currentEpoch = monthState.firstDayEpoch + (day - 1)
-                        val isPastDate = currentEpoch < monthState.nowEpoch
-
-                        // Range Logic
-                        val isStart = !isPastDate && state.selectedStartDateMillis == currentEpoch
-                        val isEnd = !isPastDate && state.selectedEndDateMillis == currentEpoch
-
-                        val dayOfWeekVal = (gridIndex % 7) + 1 // 1=Mon ... 7=Sun
-                        // Adjust logic if your config.weekendDays uses java.time.DayOfWeek
-                        // Assuming config.weekendDays contains DayOfWeek objects:
-                        val isWeekend =
-                            !isPastDate && weekendDays.any { it.value == dayOfWeekVal }
-
-                        val alpha = if (isPastDate) 0.3f else 1f
-
-                        // --- Draw Backgrounds ---
-                        drawCellBackground(
-                            x = x,
-                            y = y,
-                            cellWidthPx = cellWidthPx,
-                            cellHeightPx = cellHeightPx,
-                            isPastDate = isPastDate,
-                            isStart = isStart,
-                            isEnd = isEnd,
-                            isWeekend = isWeekend,
-                            currentEpoch = currentEpoch,
-                            weekendBackgroundColor = colors.weekendContainerColor,
-                            selectedRangeBackgroundColor = colors.selectedRangeContainerColor,
-                            selectedDateBackgroundColor = colors.selectedDateContainerColor,
-                            cornerRadius = cornerRadius,
-                            barHeightPx = barHeightPx,
-                            state = state,
-                            barPaddingPx = barPaddingPx,
-                            barSpacingPx = barSpacingPx,
-                            barWidthPx = barWidthPx,
-                            disabledDateBackgroundColor = colors.disabledContainerColor,
-                        )
-
-                        // --- Draw Borders ---
-                        drawCellBorder(
-                            x = x,
-                            y = y,
-                            cellWidthPx = cellWidthPx,
-                            cellHeightPx = cellHeightPx,
-                            borderColor = colors.cellBorderColor,
-                            strokeWidthPx = strokeWidthPx,
-                        )
-
-                        // --- Draw Tags ---
-                        drawDayTags(
-                            x = x,
-                            y = y,
-                            cellWidthPx = cellWidthPx,
-                            cellHeightPx = cellHeightPx,
-                            tagLayouts = tagLayouts,
-                            currentEpoch = currentEpoch
-                        )
-
-                        // --- Draw Text (From Cache) ---
-                        drawDayText(
-                            x = x,
-                            y = y,
-                            cellWidthPx = cellWidthPx,
-                            cellHeightPx = cellHeightPx,
-                            dayNumberLayouts = dayNumberLayouts,
-                            isPastDate = isPastDate,
-                            isStart = isStart,
-                            isEnd = isEnd,
-                            isWeekend = isWeekend,
-                            day = day
-                        )
-
-                    }
-                }
-            }
-            // --- 4. TOUCH INPUT LOGIC ---
-            // Attached only if not past month to save processing
-            .monthGestures(
-                monthState = monthState,
-                cellHeightPx = cellHeightPx,
-                state = state
-            )
-    )
-}
-
-@Composable
-internal fun Modifier.monthGestures(
-    monthState: MonthMetadata,
-    cellHeightPx: Float,
-    state: DraggableDateRangePickerState
-): Modifier {
-
-
-    // 2. Key only on the Month (Stable). Do NOT key on selection.
-    return this.pointerInput(monthState.yearMonth) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-
-            val day = getDayFromOffset(
-                down.position,
-                size.width.toFloat(),
-                cellHeightPx,
-                monthState.firstDayOfWeek
-            )
-
-            // --- HIT TEST ---
-            var isHandleTouch = false
-            var isDraggingStart = false
-            var anchorEpoch: Long? = null
-
-            if (day in 1..monthState.daysInMonth) {
-                val touchedEpoch = monthState.firstDayEpoch + (day - 1)
-
-                // Check handles using the CAPTURED state
-                if (state.selectedStartDateMillis != null && (touchedEpoch == state.selectedStartDateMillis || touchedEpoch == state.selectedEndDateMillis)) {
-                    isHandleTouch = true
-                    isDraggingStart = (touchedEpoch == state.selectedStartDateMillis)
-
-                    // Anchor logic: If dragging start, anchor is end.
-                    // If dragging end, anchor is start.
-                    // If end is null (single selection), anchor is start.
-                    anchorEpoch = if (isDraggingStart) state.selectedEndDateMillis
-                        ?: state.selectedStartDateMillis else state.selectedStartDateMillis
-
-                    // CRITICAL: Consume down to prevent parent scrolling
-                    down.consume()
-                }
-            }
-
-            // --- DECISION: DRAG vs TAP ---
-
-            if (isHandleTouch && anchorEpoch != null) {
-                // CASE A: HANDLE DRAG
-                // We stay in this loop until the user lifts their finger.
-                // Because we used rememberUpdatedState, this loop survives
-                // recompositions caused by currentUpdateDragSelection calls.
-                drag(down.id) { change ->
-                    val dragDay = getDayFromOffset(
-                        change.position,
-                        size.width.toFloat(),
-                        cellHeightPx,
-                        monthState.firstDayOfWeek
+                val cellWidth = size.width / DAYS_PER_WEEK
+                val cellHeight = size.height / month.rows
+                val tags = if (drawsDayContent) {
+                    measureMonthTags(
+                        allTags = state.getDateTags(),
+                        month = month,
+                        cellWidthPx = cellWidth,
+                        colors = colors,
+                        styles = calendarStyles,
+                        textMeasurer = textMeasurer,
+                        density = this,
                     )
+                } else {
+                    emptyMap()
+                }
+                val border = Stroke(width = BorderWidth.toPx())
+                val cornerRadius = CornerRadius(SelectedCornerRadius.toPx())
 
-                    if (dragDay in 1..monthState.daysInMonth) {
-                        val currentDragEpoch = monthState.firstDayEpoch + (dragDay - 1)
+                onDrawBehind {
+                    for (day in 1..month.daysInMonth) {
+                        val gridIndex = day + month.leadingBlanks - 1
+                        val column = gridIndex % DAYS_PER_WEEK
+                        val visualColumn = if (isRtl) DAYS_PER_WEEK - 1 - column else column
+                        val x = visualColumn * cellWidth
+                        val y = (gridIndex / DAYS_PER_WEEK) * cellHeight
+                        val epoch = month.firstDayEpoch + (day - 1)
+                        val selection = selectionOf(state, epoch)
+                        val isEnabled = enabledDays[day - 1]
+                        val isWeekend = weekendFlags[day - 1]
+                        val cellSizePx = Size(cellWidth, cellHeight)
 
-                        // Prevent dragging into the past
-                        if (currentDragEpoch >= monthState.nowEpoch) {
-                            change.consume() // Consume drag event
+                        if (!isEnabled) {
+                            drawRect(colors.disabledContainerColor, Offset(x, y), cellSizePx)
+                        } else if (isWeekend) {
+                            drawRect(colors.weekendContainerColor, Offset(x, y), cellSizePx)
+                        }
 
-                            if (isDraggingStart) {
-                                val newStart = currentDragEpoch.coerceAtMost(anchorEpoch)
-                                state.updateDragSelection(newStart, anchorEpoch)
-                            } else {
-                                val newEnd = currentDragEpoch.coerceAtLeast(anchorEpoch)
-                                state.updateDragSelection(anchorEpoch, newEnd)
+                        if (selection == CellSelection.MIDDLE) {
+                            drawRect(colors.selectedRangeContainerColor, Offset(x, y), cellSizePx)
+                        } else if (selection != CellSelection.NONE) {
+                            drawRoundRect(
+                                color = colors.selectedDateContainerColor,
+                                topLeft = Offset(x, y),
+                                size = cellSizePx,
+                                cornerRadius = cornerRadius,
+                            )
+                            if (showHandles) {
+                                drawRangeHandle(
+                                    selection = selection,
+                                    x = x,
+                                    y = y,
+                                    cellWidth = cellWidth,
+                                    cellHeight = cellHeight,
+                                    color = colors.selectedDateContentColor,
+                                    isRtl = isRtl,
+                                )
                             }
                         }
-                    }
-                }
-            } else {
-                // CASE B: TAP DETECTION
-                // If it wasn't a handle, wait to see if it's a valid tap.
-                // We assume it's a tap if they lift the finger without moving out of bounds.
-                // NOTE: We did NOT consume 'down', so parent can still scroll.
 
-                val up = waitForUpOrCancellation()
-                if (up != null) {
-                    // It was a tap!
-                    val upDay = getDayFromOffset(
-                        up.position,
-                        size.width.toFloat(),
-                        cellHeightPx,
-                        monthState.firstDayOfWeek
-                    )
+                        drawRect(
+                            color = colors.cellBorderColor,
+                            topLeft = Offset(x, y),
+                            size = cellSizePx,
+                            style = border,
+                        )
 
-                    if (upDay in 1..monthState.daysInMonth && upDay == day) {
-                        val epoch = monthState.firstDayEpoch + (upDay - 1)
-                        if (epoch >= monthState.nowEpoch) {
-                            state.onDateSelected(epoch)
-                            up.consume()
+                        if (drawsDayContent) {
+                            tags[epoch]?.forEach { tag ->
+                                drawTag(tag, x, y, cellWidth, cellHeight, isRtl)
+                            }
+                            val variant = when {
+                                selection == CellSelection.MIDDLE -> DayTextVariant.IN_RANGE
+                                selection != CellSelection.NONE -> DayTextVariant.SELECTED
+                                !isEnabled -> DayTextVariant.DISABLED
+                                isWeekend -> DayTextVariant.WEEKEND
+                                else -> DayTextVariant.STANDARD
+                            }
+                            val text = dayTextCache.get(day, variant)
+                            drawText(
+                                textLayoutResult = text,
+                                topLeft = Offset(
+                                    x + (cellWidth - text.size.width) / 2,
+                                    y + (cellHeight - text.size.height) / 2,
+                                ),
+                            )
                         }
                     }
                 }
+            },
+        content = {
+            for (day in 1..month.daysInMonth) {
+                key(day) {
+                    DayNode(
+                        state = state,
+                        date = month.yearMonth.atDay(day),
+                        dayText = dayLabels[day - 1],
+                        isEnabled = enabledDays[day - 1],
+                        isWeekend = weekendFlags[day - 1],
+                        today = today,
+                        dateFormatter = dateFormatter,
+                        dayContent = dayContent,
+                        onDateTapped = onDateTapped,
+                    )
+                }
+            }
+        },
+    ) { measurables, constraints ->
+        val cellHeight = cellSize.roundToPx()
+        val width = if (constraints.hasBoundedWidth) {
+            constraints.maxWidth
+        } else {
+            cellHeight * DAYS_PER_WEEK
+        }
+        val cellWidth = width / DAYS_PER_WEEK.toFloat()
+        val childConstraints = Constraints.fixed(ceil(cellWidth).toInt(), cellHeight)
+        val placeables = measurables.map { it.measure(childConstraints) }
+
+        layout(width, cellHeight * month.rows) {
+            placeables.forEachIndexed { index, placeable ->
+                val gridIndex = index + month.leadingBlanks
+                // placeRelative mirrors the position in right-to-left layouts.
+                placeable.placeRelative(
+                    x = ((gridIndex % DAYS_PER_WEEK) * cellWidth).roundToInt(),
+                    y = (gridIndex / DAYS_PER_WEEK) * cellHeight,
+                )
             }
         }
     }
 }
 
-private fun DrawScope.drawCellBackground(
-    x: Float,
-    y: Float,
-    cellHeightPx: Float,
-    cellWidthPx: Float,
-    isPastDate: Boolean,
-    isStart: Boolean,
-    isEnd: Boolean,
-    isWeekend: Boolean,
-    currentEpoch: Long,
-    weekendBackgroundColor: Color,
-    selectedRangeBackgroundColor: Color,
-    selectedDateBackgroundColor: Color,
-    disabledDateBackgroundColor: Color,
-    cornerRadius: CornerRadius,
-    barHeightPx: Float,
+/**
+ * The child node for one day. Deriving its selection means a drag only recomposes the days whose
+ * status actually changed.
+ */
+@Composable
+private fun DayNode(
     state: DraggableDateRangePickerState,
-    barPaddingPx: Float,
-    barSpacingPx: Float,
-    barWidthPx: Float,
+    date: LocalDate,
+    dayText: String,
+    isEnabled: Boolean,
+    isWeekend: Boolean,
+    today: LocalDate,
+    dateFormatter: DateTimeFormatter,
+    dayContent: (@Composable (DayCell) -> Unit)?,
+    onDateTapped: (Long) -> Unit,
 ) {
-    // Manual range check is faster than DateUtils calls inside loop
-    val isMiddleRange = !isPastDate && !isStart && !isEnd &&
-            (state.selectedStartDateMillis != null && state.selectedEndDateMillis != null &&
-                    currentEpoch > state.selectedStartDateMillis!! && currentEpoch < state.selectedEndDateMillis!!)
-
-    if (isWeekend) {
-        drawRect(
-            color = weekendBackgroundColor,
-            topLeft = Offset(x, y),
-            size = Size(cellWidthPx, cellHeightPx)
-        )
+    val epoch = date.toEpochDay()
+    val selection by remember(state, epoch) {
+        derivedStateOf { selectionOf(state, epoch) }
     }
+    val tags by remember(state, epoch) {
+        derivedStateOf { state.getDateTags()[epoch].orEmpty() }
+    }
+    val selectionDescription = when (selection) {
+        CellSelection.NONE -> null
+        CellSelection.START -> stringResource(R.string.ddp_state_range_start)
+        CellSelection.END -> stringResource(R.string.ddp_state_range_end)
+        CellSelection.BOTH -> stringResource(R.string.ddp_state_selected)
+        CellSelection.MIDDLE -> stringResource(R.string.ddp_state_range_middle)
+    }
+    val unavailable = if (isEnabled) null else stringResource(R.string.ddp_state_unavailable)
+    val selectLabel = stringResource(R.string.ddp_action_select)
 
-    if (isMiddleRange) {
-        drawRect(
-            color = selectedRangeBackgroundColor,
-            topLeft = Offset(x, y),
-            size = Size(cellWidthPx, cellHeightPx),
-        )
-    } else if (isStart || isEnd) {
-        drawRoundRect(
-            color = selectedDateBackgroundColor,
-            topLeft = Offset(x, y),
-            size = Size(cellWidthPx, cellHeightPx),
-            cornerRadius = cornerRadius
-        )
-
-        // Draw Vertical Bars (Selection Handles)
-        val barCenterY = y + (cellHeightPx / 2) - (barHeightPx / 2)
-        val barColor = Color.White
-
-        if (isStart && state.selectedEndDateMillis != null && state.selectedStartDateMillis != state.selectedEndDateMillis) {
-            val barStartX = x + barPaddingPx
-            drawLine(
-                barColor,
-                Offset(barStartX, barCenterY),
-                Offset(barStartX, barCenterY + barHeightPx),
-                barWidthPx,
-                StrokeCap.Round
-            )
-            drawLine(
-                barColor,
-                Offset(barStartX + barSpacingPx, barCenterY),
-                Offset(barStartX + barSpacingPx, barCenterY + barHeightPx),
-                barWidthPx,
-                StrokeCap.Round
-            )
-        }
-
-        if (isEnd && state.selectedStartDateMillis != state.selectedEndDateMillis) {
-            val barStartX =
-                x + cellWidthPx - barPaddingPx - barSpacingPx - barWidthPx
-            drawLine(
-                barColor,
-                Offset(barStartX, barCenterY),
-                Offset(barStartX, barCenterY + barHeightPx),
-                barWidthPx,
-                StrokeCap.Round
-            )
-            drawLine(
-                barColor,
-                Offset(barStartX + barSpacingPx, barCenterY),
-                Offset(barStartX + barSpacingPx, barCenterY + barHeightPx),
-                barWidthPx,
-                StrokeCap.Round
+    Box(
+        modifier = Modifier.clearAndSetSemantics {
+            contentDescription = buildString {
+                append(dateFormatter.format(date))
+                tags.forEach { append(", ").append(it.text) }
+            }
+            selected = selection != CellSelection.NONE
+            listOfNotNull(selectionDescription, unavailable)
+                .takeIf { it.isNotEmpty() }
+                ?.let { stateDescription = it.joinToString(", ") }
+            if (isEnabled) {
+                onClick(label = selectLabel) {
+                    onDateTapped(epoch)
+                    true
+                }
+            } else {
+                disabled()
+            }
+        },
+    ) {
+        if (dayContent != null) {
+            val current = selection
+            dayContent(
+                DayCell(
+                    date = date,
+                    dayText = dayText,
+                    isToday = date == today,
+                    isWeekend = isWeekend,
+                    isEnabled = isEnabled,
+                    isRangeStart = current == CellSelection.START || current == CellSelection.BOTH,
+                    isRangeEnd = current == CellSelection.END || current == CellSelection.BOTH,
+                    isInRange = current == CellSelection.MIDDLE,
+                    tags = tags,
+                ),
             )
         }
     }
 }
 
-private fun DrawScope.drawCellBorder(
-    borderColor: Color,
+/** Measures only this month's tags, constrained to the cell so long labels ellipsize. */
+private fun measureMonthTags(
+    allTags: Map<Long, List<CalendarTag>>,
+    month: MonthMetadata,
+    cellWidthPx: Float,
+    colors: CalendarColors,
+    styles: CalendarTextStyles,
+    textMeasurer: TextMeasurer,
+    density: Density,
+): Map<Long, List<MeasuredTag>> {
+    if (allTags.isEmpty()) return emptyMap()
+    val inset = with(density) { (TagPadding + PillHorizontalPadding).toPx() } * 2
+    val maxWidth = (cellWidthPx - inset).toInt().coerceAtLeast(0)
+    val result = HashMap<Long, List<MeasuredTag>>()
+    for (offset in 0 until month.daysInMonth) {
+        val epoch = month.firstDayEpoch + offset
+        val dayTags = allTags[epoch] ?: continue
+        result[epoch] = dayTags.map { tag ->
+            val hasBackground = tag.style == TagStyle.PILL || tag.backgroundColor != null
+            MeasuredTag(
+                textLayoutResult = textMeasurer.measure(
+                    text = AnnotatedString(tag.text),
+                    style = styles.tagTextStyle.merge(
+                        color = tag.color ?: Color.Unspecified,
+                        fontSize = tag.fontSize,
+                        fontWeight = if (tag.type == TagType.PRICE) FontWeight.SemiBold else null,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    constraints = Constraints(maxWidth = maxWidth),
+                ),
+                alignment = tag.alignment,
+                backgroundColor = if (hasBackground) {
+                    tag.backgroundColor ?: colors.tagContainerColor
+                } else {
+                    null
+                },
+            )
+        }
+    }
+    return result
+}
+
+private fun DrawScope.drawRangeHandle(
+    selection: CellSelection,
     x: Float,
     y: Float,
-    cellHeightPx: Float,
-    cellWidthPx: Float,
-    strokeWidthPx: Float,
-) {
-    drawRect(
-        color = borderColor,
-        topLeft = Offset(x, y),
-        size = Size(cellWidthPx, cellHeightPx),
-        style = Stroke(width = strokeWidthPx)
-    )
-}
-
-private fun DrawScope.drawDayTags(
-    x: Float,
-    y: Float,
-    cellHeightPx: Float,
-    cellWidthPx: Float,
-    tagLayouts: Map<Long, List<MeasuredTag>>?,
-    currentEpoch: Long
-) {
-    tagLayouts?.get(currentEpoch)?.forEach { (measuredTag, alignment) ->
-        val tW = measuredTag.size.width
-        val tH = measuredTag.size.height
-        val tagPadding = 4.dp.toPx() // Keep simple padding logic
-
-        val tagX = when (alignment) {
-            TagAlignment.TOP_START, TagAlignment.CENTER_START, TagAlignment.BOTTOM_START -> x + tagPadding
-            TagAlignment.TOP_CENTER, TagAlignment.CENTER, TagAlignment.BOTTOM_CENTER -> x + (cellWidthPx - tW) / 2
-            else -> x + cellWidthPx - tW - tagPadding
-        }
-
-        val tagY = when (alignment) {
-            TagAlignment.TOP_START, TagAlignment.TOP_CENTER, TagAlignment.TOP_END -> y + tagPadding
-            TagAlignment.CENTER_START, TagAlignment.CENTER, TagAlignment.CENTER_END -> y + (cellHeightPx - tH) / 2
-            else -> y + cellHeightPx - tH - tagPadding
-        }
-
-        drawText(measuredTag, topLeft = Offset(tagX, tagY))
-    }
-}
-
-private fun DrawScope.drawDayText(
-    x: Float,
-    y: Float,
-    cellHeightPx: Float,
-    cellWidthPx: Float,
-    dayNumberLayouts: Map<Int, DayTextCache>,
-    day: Int,
-    isPastDate: Boolean,
-    isStart: Boolean,
-    isEnd: Boolean,
-    isWeekend: Boolean
-) {
-    val cachedDay = dayNumberLayouts[day]!!
-    val textLayout = when {
-        isPastDate -> cachedDay.disabled
-        isStart || isEnd -> cachedDay.selected
-        isWeekend -> cachedDay.weekend
-        else -> cachedDay.standard
-    }
-
-    drawText(
-        textLayoutResult = textLayout,
-        topLeft = Offset(
-            x + (cellWidthPx - textLayout.size.width) / 2,
-            y + (cellHeightPx - textLayout.size.height) / 2
-        )
-    )
-}
-
-// --- Helper Classes ---
-
-
-// Pure Math Helper
-private fun getDayFromOffset(
-    offset: Offset,
-    viewWidth: Float,
+    cellWidth: Float,
     cellHeight: Float,
-    firstDayOffset: Int
-): Int {
-    val col = (offset.x / (viewWidth / 7)).toInt()
-    val row = (offset.y / cellHeight).toInt()
-    Log.e("Rahul", "getDayFromOffset firstDayOfWeek $firstDayOffset , row $row , col $col")
-    val gridIndex = row * 7 + col
-    return gridIndex - firstDayOffset + 1
+    color: Color,
+    isRtl: Boolean,
+) {
+    if (selection != CellSelection.START && selection != CellSelection.END) return
+    val barWidth = HandleWidth.toPx()
+    val barHeight = HandleHeight.toPx()
+    val spacing = HandleSpacing.toPx()
+    val padding = HandlePadding.toPx()
+    val top = y + (cellHeight - barHeight) / 2
+    // The handle sits on the range's outer edge, which is the left of the start date in LTR.
+    val onLeft = (selection == CellSelection.START) != isRtl
+    val firstBar = if (onLeft) x + padding else x + cellWidth - padding - spacing - barWidth
+    for (barX in listOf(firstBar, firstBar + spacing)) {
+        drawLine(color, Offset(barX, top), Offset(barX, top + barHeight), barWidth, StrokeCap.Round)
+    }
 }
+
+private fun DrawScope.drawTag(
+    tag: MeasuredTag,
+    x: Float,
+    y: Float,
+    cellWidth: Float,
+    cellHeight: Float,
+    isRtl: Boolean,
+) {
+    val layout = tag.textLayoutResult
+    val width = layout.size.width
+    val height = layout.size.height
+    val padding = TagPadding.toPx()
+    val pillX = PillHorizontalPadding.toPx()
+    val pillY = PillVerticalPadding.toPx()
+
+    val horizontal = when (tag.alignment) {
+        TagAlignment.TOP_START, TagAlignment.CENTER_START, TagAlignment.BOTTOM_START -> -1
+        TagAlignment.TOP_END, TagAlignment.CENTER_END, TagAlignment.BOTTOM_END -> 1
+        else -> 0
+    }.let { if (isRtl) -it else it }
+    val tagX = when (horizontal) {
+        -1 -> x + padding + pillX
+        1 -> x + cellWidth - width - padding - pillX
+        else -> x + (cellWidth - width) / 2
+    }
+    val tagY = when (tag.alignment) {
+        TagAlignment.TOP_START, TagAlignment.TOP_CENTER, TagAlignment.TOP_END -> y + padding
+        TagAlignment.CENTER_START, TagAlignment.CENTER, TagAlignment.CENTER_END ->
+            y + (cellHeight - height) / 2
+        else -> y + cellHeight - height - padding
+    }
+
+    tag.backgroundColor?.let { background ->
+        drawRoundRect(
+            color = background,
+            topLeft = Offset(tagX - pillX, tagY - pillY),
+            size = Size(width + pillX * 2, height + pillY * 2),
+            cornerRadius = CornerRadius((height + pillY * 2) / 2),
+        )
+    }
+    drawText(layout, topLeft = Offset(tagX, tagY))
+}
+
+/** Returns the selection as a value the rules can work with. */
+internal fun DraggableDateRangePickerState.selectionValue(): SelectionValue =
+    SelectionValue(selectedStartEpochDay, selectedEndEpochDay)

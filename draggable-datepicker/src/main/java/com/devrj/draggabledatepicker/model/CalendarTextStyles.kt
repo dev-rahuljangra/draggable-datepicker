@@ -11,7 +11,8 @@ data class CalendarTextStyles(
     val selectedDayTextStyle: TextStyle,
     val weekendTextStyle: TextStyle,
     val disabledDayTextStyle: TextStyle,
-    val tagTextStyle: TextStyle
+    val tagTextStyle: TextStyle,
+    val inRangeDayTextStyle: TextStyle = dayTextStyle,
 ) {
     /**
      * Merges these styles with the provided colors.
@@ -34,7 +35,12 @@ data class CalendarTextStyles(
             disabledDayTextStyle = disabledDayTextStyle.copy(
                 color = disabledDayTextStyle.color.takeOrElse { colors.disabledContentColor }
             ),
-            tagTextStyle = tagTextStyle.copy(tagTextStyle.color.takeOrElse { colors.tagContentColor })
+            tagTextStyle = tagTextStyle.copy(
+                color = tagTextStyle.color.takeOrElse { colors.tagContentColor }
+            ),
+            inRangeDayTextStyle = inRangeDayTextStyle.copy(
+                color = inRangeDayTextStyle.color.takeOrElse { colors.selectedRangeContentColor }
+            ),
         )
     }
 }

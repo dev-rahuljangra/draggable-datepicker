@@ -1,4 +1,4 @@
-package com.inc.adv.draggabledaterangepicker.utils
+package com.devrj.draggabledatepicker.utils
 
 import java.time.LocalDate
 

@@ -1,8 +1,7 @@
-import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.dokka)
     id("maven-publish")
 }
 
@@ -39,10 +38,21 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     publishing {
         singleVariant("release") {
             withSourcesJar()
         }
+    }
+}
+
+// Dokka can't find the sources by itself with the Kotlin support built into AGP 9.
+dokka {
+    moduleName.set("Draggable DatePicker")
+    dokkaSourceSets.register("main") {
+        sourceRoots.from("src/main/java")
     }
 }
 
@@ -73,6 +83,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.material)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

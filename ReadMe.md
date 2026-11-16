@@ -9,23 +9,15 @@ Built with performance, flexibility, and Compose best practices in mind.
 
 ## ✨ Features
 
-- **Draggable Date Range Selection**  
-  Select a continuous range of dates with a smooth drag gesture.
-
-- **Jetpack Compose Native**  
-  100% built using Jetpack Compose — no XML, no legacy Views.
-
-- **State-Driven API**  
-  Clean and predictable state management using `rememberDraggableDateRangePickerState()`.
-
-- **Highly Customizable**  
-  Customize year range, colors, typography, cell decorations, and tags.
-
-- **Lightweight & Performant**  
-  Minimal dependencies and optimized Canvas drawing for smooth scrolling.
-
-- **Booking App Friendly**  
-  Designed for use cases like flights, hotels, and event scheduling.
+- **Draggable ranges:** drag either end of a range, across months, with auto-scroll at the edges.
+- **Date rules:** set minimum and maximum dates, block individual dates, and limit range length.
+- **Two selection modes:** pick a range or a single date.
+- **Two layouts:** scroll months vertically or page through them horizontally.
+- **Ready-made containers:** use a dialog or bottom sheet with shortcuts such as "Next 7 days".
+- **Tags:** add text, pills and price labels to any day, or draw your own cells with `dayContent`.
+- **Accessible:** screen readers get each day's date, status and tags, and can select it.
+- **Localized:** month names, weekdays, numbers, week start and right-to-left layouts follow the locale.
+- **Material 3 theming:** light, dark and dynamic color work by default.
 
 ---
 
@@ -74,57 +66,140 @@ dependencies {
 
 ## 🛠️ Usage
 
-Using the `DraggableDateRangePicker` in your Compose code is simple.
-Just remember to use `rememberDraggableDateRangePickerState()` to manage the selection.
-
-- Adding Tags to Dates
-
-You can attach one or more **tags** to specific dates (for example: holidays, prices, events, or
-offers).
-
-Tags are applied via the picker state using the `setTags()` API.
-
+Create a state with `rememberDraggableDateRangePickerState()` and pass it to the picker. Give the
+picker a bounded height, such as `Modifier.fillMaxSize()`, because the months scroll inside it.
 
 ```kotlin
 @Composable
 fun MyDateSelectionScreen() {
     val state = rememberDraggableDateRangePickerState()
-      LaunchedEffect(Unit) {
-        delay(3000)
-    
-        state.setTags(
-          mapOf(
-            LocalDate.of(2026, 1, 1).toEpochDay() to
-                    listOf(CalendarTag(text = "New Year"))
-          )
-        )
-      }
+
     DraggableDateRangePicker(
         state = state,
-        startYear = 2026,
-        endYear = 2026,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        onRangeChange = { start, end -> /* start and end are LocalDate? */ },
     )
-
-    // Access selected dates via state.startDate and state.endDate
 }
+```
+
+Read the selection at any time with `state.selectedStartDate` and `state.selectedEndDate`. Users tap
+to choose dates, then drag a selected date to change the range.
+
+### Date rules
+
+```kotlin
+DraggableDateRangePicker(
+    state = state,
+    minDate = LocalDate.now(),          // Defaults to today. Use null to allow past dates.
+    maxDate = LocalDate.now().plusYears(1),
+    isDateSelectable = { it !in soldOutDates },
+    allowUnselectableDatesInRange = false, // A drag stops before a blocked date.
+    minRangeDays = 2,                   // Range lengths count both ends.
+    maxRangeDays = 14,
+)
+```
+
+To show past dates, also set `startYear`, which defaults to the current year.
+
+### Selection mode and layout
+
+```kotlin
+DraggableDateRangePicker(
+    state = state,
+    selectionMode = DateSelectionMode.SINGLE,
+    orientation = CalendarOrientation.HORIZONTAL,
+    stickyWeekdayHeader = false,        // Show weekdays in each month instead.
+    hapticsEnabled = false,
+)
+```
+
+### Dialog and bottom sheet
+
+Both show preset shortcuts with confirm and cancel buttons. They don't close themselves, so hide them
+from your callbacks.
+
+```kotlin
+if (showPicker) {
+    DraggableDateRangePickerBottomSheet( // Or DraggableDateRangePickerDialog
+        onDismissRequest = { showPicker = false },
+        onConfirm = { start, end ->
+            showPicker = false
+        },
+    )
+}
+```
+
+To change the shortcuts, pass your own list:
+
+```kotlin
+presets = listOf(DateRangePreset("Next weekend") { today -> nextWeekend(today) })
+```
+
+To customize the picker inside, create the state yourself and pass `pickerContent`, using that same
+state.
+
+### Scrolling
+
+The picker opens on the selected month, or else the current month. Set `initialDisplayedMonth` to
+choose another.
+
+```kotlin
+scope.launch { state.scrollToMonth(YearMonth.of(2027, 1)) }
+```
+
+### Tags
+
+Tags are keyed by epoch day.
+
+```kotlin
+state.setTags(
+    mapOf(
+        date.toEpochDay() to listOf(CalendarTag("Holiday")),
+        date.plusDays(1).toEpochDay() to listOf(CalendarTag.pill("Sale")),
+        date.plusDays(2).toEpochDay() to listOf(CalendarTag.price("$120")),
+    )
+)
+```
+
+### Custom day cells
+
+`dayContent` replaces the drawn number and tags. The selection background is still drawn behind it.
+Don't add click handlers, because cells need those touches for selection.
+
+```kotlin
+DraggableDateRangePicker(
+    state = state,
+    dayContent = { cell ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(cell.dayText, fontWeight = if (cell.isToday) FontWeight.Bold else null)
+        }
+    },
+)
 ```
 
 ## 🎨 Customization
 
-- You can customize the picker to match your app design:
+Colors and text styles follow `MaterialTheme` by default. Override any of them:
 
-- Year range (startYear, endYear)
+```kotlin
+DraggableDateRangePicker(
+    state = state,
+    colors = CalendarDefaults.colors(selectedDateContainerColor = Color(0xFF00696B)),
+    calendarTextStyles = CalendarDefaults.textStyles(
+        monthTextStyles = TextStyle(fontSize = 20.sp),
+    ),
+    weekendDays = listOf(DayOfWeek.FRIDAY, DayOfWeek.SATURDAY),
+    cellSize = 48.dp,
+)
+```
 
-- Date cell colors and typography
+The locale comes from the device configuration. Set `locale` or `firstDayOfWeek` to override it. To
+translate the screen reader text and dialog labels, override the `ddp_*` string resources in your app.
 
-- Selected range styling
+## 📖 API docs
 
-- Tag indicators and alignment
-
-- Disabled / blocked dates (if enabled)
-
-- Detailed theming and styling examples will be added soon.
+Generate the HTML docs with `./gradlew :draggable-datepicker:dokkaGeneratePublicationHtml`. The output
+is in `draggable-datepicker/build/dokka/html`.
 
 ## 🧩 Common Use Cases
 

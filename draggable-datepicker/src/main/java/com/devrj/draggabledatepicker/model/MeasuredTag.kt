@@ -9,6 +9,5 @@ import com.devrj.draggabledatepicker.enums.TagAlignment
 internal data class MeasuredTag(
     val textLayoutResult: TextLayoutResult,
     val alignment: TagAlignment,
-    val backgroundColor : Color,
-    val color: Color,
+    val backgroundColor: Color?,
 )
